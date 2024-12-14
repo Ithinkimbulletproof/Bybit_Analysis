@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class User(models.Model):
     username = models.CharField(max_length=100, unique=True)
     risk_level = models.IntegerField(choices=[(i, f"Уровень {i}") for i in range(1, 6)])
@@ -21,15 +22,13 @@ class CryptoPair(models.Model):
 
 
 class HistoricalData(models.Model):
-    pair = models.ForeignKey(
-        CryptoPair, on_delete=models.CASCADE, related_name="historical_data"
-    )
+    pair = models.ForeignKey(CryptoPair, on_delete=models.CASCADE)
     date = models.DateTimeField()
-    open_price = models.DecimalField(max_digits=20, decimal_places=10)
-    close_price = models.DecimalField(max_digits=20, decimal_places=10)
-    high_price = models.DecimalField(max_digits=20, decimal_places=10)
-    low_price = models.DecimalField(max_digits=20, decimal_places=10)
-    volume = models.DecimalField(max_digits=20, decimal_places=10)
+    open_price = models.DecimalField(max_digits=30, decimal_places=10)
+    close_price = models.DecimalField(max_digits=30, decimal_places=10)
+    high_price = models.DecimalField(max_digits=30, decimal_places=10)
+    low_price = models.DecimalField(max_digits=30, decimal_places=10)
+    volume = models.DecimalField(max_digits=30, decimal_places=10)
 
     class Meta:
         unique_together = ("pair", "date")
