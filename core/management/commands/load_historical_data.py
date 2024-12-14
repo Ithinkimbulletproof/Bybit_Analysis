@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 semaphore = asyncio.Semaphore(5)
 
+
 class Command(BaseCommand):
     help = "Асинхронная загрузка исторических данных для избранных пар"
 
@@ -30,7 +31,11 @@ class Command(BaseCommand):
                 response.raise_for_status()
                 data = response.json()
 
-                if "result" in data and "list" in data["result"] and data["result"]["list"]:
+                if (
+                    "result" in data
+                    and "list" in data["result"]
+                    and data["result"]["list"]
+                ):
                     historical_data = data["result"]["list"]
 
                     for record in historical_data:
@@ -48,14 +53,18 @@ class Command(BaseCommand):
                                 "volume": float(record[5]),
                             },
                         )
-                    logger.info(f"Исторические данные для пары {pair.name} успешно обновлены.")
+                    logger.info(
+                        f"Исторические данные для пары {pair.name} успешно обновлены."
+                    )
                 else:
                     logger.warning(f"Нет данных для пары {pair.name} или данные пусты.")
 
             except httpx.RequestError as e:
                 logger.error(f"Ошибка сети при запросе данных для {pair.name}: {e}")
             except Exception as e:
-                logger.error(f"Ошибка при обработке данных для {pair.name}: {e}", exc_info=True)
+                logger.error(
+                    f"Ошибка при обработке данных для {pair.name}: {e}", exc_info=True
+                )
 
     async def handle_async(self):
         pairs = await sync_to_async(list)(CryptoPair.objects.all())
