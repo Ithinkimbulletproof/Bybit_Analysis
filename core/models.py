@@ -1,15 +1,16 @@
+from django.contrib.auth.models import User
 from django.db import models
 
 
-class User(models.Model):
-    username = models.CharField(max_length=100, unique=True)
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     risk_level = models.IntegerField(choices=[(i, f"Уровень {i}") for i in range(1, 6)])
     favorite_pairs = models.ManyToManyField(
         "CryptoPair", blank=True, related_name="favorite_users"
     )
 
     def __str__(self):
-        return self.username
+        return self.user.username
 
 
 class CryptoPair(models.Model):
@@ -22,7 +23,9 @@ class CryptoPair(models.Model):
 
 
 class HistoricalData(models.Model):
-    pair = models.ForeignKey(CryptoPair, on_delete=models.CASCADE)
+    pair = models.ForeignKey(
+        CryptoPair, on_delete=models.CASCADE, related_name="historical_data"
+    )
     date = models.DateTimeField()
     open_price = models.DecimalField(max_digits=30, decimal_places=10)
     close_price = models.DecimalField(max_digits=30, decimal_places=10)
@@ -38,9 +41,21 @@ class HistoricalData(models.Model):
 
 
 class Strategy(models.Model):
-    risk_level = models.IntegerField(choices=[(i, f"Уровень {i}") for i in range(1, 6)])
-    parameters = models.TextField()
-    expected_return = models.DecimalField(max_digits=10, decimal_places=2)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="strategies")
+    risk_level = models.CharField(
+        max_length=50,
+        choices=[("low", "Низкий"), ("medium", "Средний"), ("high", "Высокий")],
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Стратегия {self.risk_level}"
+        return f"Стратегия {self.user.username} ({self.risk_level}) - {self.amount}"
+
+
+class RiskLevel(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name

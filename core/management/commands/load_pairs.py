@@ -6,13 +6,14 @@ from core.models import CryptoPair
 from asgiref.sync import sync_to_async
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename="logfile.log", level=logging.INFO, format=LOG_FORMAT, filemode="a")
+logging.basicConfig(
+    filename="logfile.log", level=logging.INFO, format=LOG_FORMAT, filemode="a"
+)
 logger = logging.getLogger(__name__)
 
 
 @sync_to_async
 def update_or_create_pair(symbol, base_coin, quote_coin):
-    """ Обновляем или создаём новую пару в БД """
     CryptoPair.objects.update_or_create(
         name=symbol,
         defaults={
@@ -26,7 +27,6 @@ class Command(BaseCommand):
     help = "Загружает список всех торговых пар с Bybit API и сохраняет их в базу данных"
 
     async def fetch_pairs(self, client):
-        """ Асинхронный запрос к Bybit API для получения списка пар """
         url = "https://api.bybit.com/v5/market/instruments-info?category=spot"
         try:
             logger.info(f"Запрос списка пар по URL: {url}")
@@ -43,7 +43,7 @@ class Command(BaseCommand):
                         await update_or_create_pair(
                             symbol=pair["symbol"],
                             base_coin=pair["baseCoin"],
-                            quote_coin=pair["quoteCoin"]
+                            quote_coin=pair["quoteCoin"],
                         )
                     else:
                         logger.warning(f"Пропуск пары из-за отсутствия ключей: {pair}")
@@ -58,7 +58,6 @@ class Command(BaseCommand):
             logger.error(f"Ошибка при обработке списка пар: {e}", exc_info=True)
 
     async def handle_async(self):
-        """ Асинхронная функция для загрузки списка пар """
         async with httpx.AsyncClient() as client:
             await self.fetch_pairs(client)
 
