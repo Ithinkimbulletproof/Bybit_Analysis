@@ -17,5 +17,17 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         amount = kwargs["amount"]
         risk_level = kwargs["risk_level"]
-        strategy = generate_strategy(amount, risk_level)
-        self.stdout.write(self.style.SUCCESS(f"Сгенерированная стратегия: {strategy}"))
+        try:
+            if amount <= 0:
+                self.stderr.write(self.style.ERROR("Сумма должна быть положительной"))
+                return
+            if risk_level not in ["low", "medium", "high"]:
+                self.stderr.write(self.style.ERROR("Недопустимый уровень риска"))
+                return
+
+            strategy = generate_strategy(amount, risk_level)
+            self.stdout.write(
+                self.style.SUCCESS(f"Сгенерированная стратегия: {strategy}")
+            )
+        except Exception as e:
+            self.stderr.write(self.style.ERROR(f"Ошибка при генерации стратегии: {e}"))

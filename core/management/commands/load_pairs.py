@@ -29,33 +29,48 @@ class Command(BaseCommand):
     async def fetch_pairs(self, client):
         url = "https://api.bybit.com/v5/market/instruments-info?category=spot"
         try:
-            logger.info(f"Запрос списка пар по URL: {url}")
             response = await client.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
 
             if "result" in data and "list" in data["result"] and data["result"]["list"]:
                 pairs = data["result"]["list"]
-                logger.info(f"Найдено {len(pairs)} пар для обновления.")
-
                 for pair in pairs:
-                    if "symbol" in pair and "baseCoin" in pair and "quoteCoin" in pair:
-                        await update_or_create_pair(
-                            symbol=pair["symbol"],
-                            base_coin=pair["baseCoin"],
-                            quote_coin=pair["quoteCoin"],
+                    try:
+                        if (
+                            "symbol" in pair
+                            and "baseCoin" in pair
+                            and "quoteCoin" in pair
+                        ):
+                            await update_or_create_pair(
+                                symbol=pair["symbol"],
+                                base_coin=pair["baseCoin"],
+                                quote_coin=pair["quoteCoin"],
+                            )
+                        else:
+                            self.stderr.write(
+                                self.style.ERROR(
+                                    f"Пропуск пары из-за отсутствия ключей: {pair}"
+                                )
+                            )
+                    except Exception as e:
+                        self.stderr.write(
+                            self.style.ERROR(f"Ошибка при обновлении пары {pair}: {e}")
                         )
-                    else:
-                        logger.warning(f"Пропуск пары из-за отсутствия ключей: {pair}")
 
-                logger.info(f"Успешно загружено {len(pairs)} пар.")
             else:
-                logger.warning("Ответ API не содержит списка пар или список пуст.")
+                self.stderr.write(
+                    self.style.ERROR(
+                        "Ответ API не содержит списка пар или список пуст."
+                    )
+                )
 
         except httpx.RequestError as e:
-            logger.error(f"Ошибка сети: {e}")
+            self.stderr.write(
+                self.style.ERROR(f"Ошибка сети при запросе списка пар: {e}")
+            )
         except Exception as e:
-            logger.error(f"Ошибка при обработке списка пар: {e}", exc_info=True)
+            self.stderr.write(self.style.ERROR(f"Ошибка при обработке списка пар: {e}"))
 
     async def handle_async(self):
         async with httpx.AsyncClient() as client:

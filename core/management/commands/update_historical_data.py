@@ -6,5 +6,10 @@ class Command(BaseCommand):
     help = "Обновление исторических данных"
 
     def handle(self, *args, **kwargs):
-        update_historical_data.delay()
-        self.stdout.write(self.style.SUCCESS("Запущено обновление исторических данных"))
+        try:
+            update_historical_data.delay()
+            self.stdout.write(
+                self.style.SUCCESS("Запущено обновление исторических данных")
+            )
+        except Exception as e:
+            self.stderr.write(self.style.ERROR(f"Ошибка при запуске обновления: {e}"))

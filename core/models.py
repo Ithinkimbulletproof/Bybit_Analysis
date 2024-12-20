@@ -1,10 +1,15 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    risk_level = models.IntegerField(choices=[(i, f"Уровень {i}") for i in range(1, 6)])
+    risk_level = models.PositiveSmallIntegerField(
+        choices=[(i, f"Уровень {i}") for i in range(1, 6)],
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     favorite_pairs = models.ManyToManyField(
         "CryptoPair", blank=True, related_name="favorite_users"
     )
@@ -35,19 +40,28 @@ class HistoricalData(models.Model):
 
     class Meta:
         unique_together = ("pair", "date")
+        indexes = [models.Index(fields=["date"])]
 
     def __str__(self):
         return f"{self.pair.name} - {self.date}"
 
 
 class Strategy(models.Model):
+    RISK_LEVEL_CHOICES = [("low", "Низкий"), ("medium", "Средний"), ("high", "Высокий")]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="strategies")
-    risk_level = models.CharField(
-        max_length=50,
-        choices=[("low", "Низкий"), ("medium", "Средний"), ("high", "Высокий")],
+    risk_level = models.CharField(max_length=50, choices=RISK_LEVEL_CHOICES)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)]
     )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    expected_return = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if self.amount <= 0:
+            raise ValidationError("Сумма должна быть больше 0.")
 
     def __str__(self):
         return f"Стратегия {self.user.username} ({self.risk_level}) - {self.amount}"

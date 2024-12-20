@@ -7,7 +7,7 @@ def calculate_volatility(pair_name):
         historical_data = HistoricalData.objects.filter(pair__name=pair_name).order_by(
             "date"
         )
-        prices = [data.close_price for data in historical_data]
+        prices = [float(data.close_price) for data in historical_data]
 
         if len(prices) < 2:
             return None
@@ -23,15 +23,15 @@ def calculate_volatility(pair_name):
 def generate_strategy(amount, risk_level):
     allocation = 0
 
-    if risk_level == "low":
-        allocation = amount * 0.2
-    elif risk_level == "medium":
-        allocation = amount * 0.5
-    elif risk_level == "high":
-        allocation = amount * 0.8
+    risk_allocations = {"low": 0.2, "medium": 0.5, "high": 0.8}
+
+    if risk_level in risk_allocations:
+        allocation = amount * risk_allocations[risk_level]
+    else:
+        raise ValueError(f"Неверный уровень риска: {risk_level}")
 
     return {
         "risk_level": risk_level,
-        "total_investment": amount,
+        "total_investment": round(amount, 2),
         "allocated_amount": round(allocation, 2),
     }

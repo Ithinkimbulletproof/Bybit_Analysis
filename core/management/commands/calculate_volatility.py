@@ -12,12 +12,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         pair_name = kwargs["pair_name"]
-        volatility = calculate_volatility(pair_name)
-        if volatility is not None:
-            self.stdout.write(
-                self.style.SUCCESS(f"Волатильность для {pair_name}: {volatility}")
-            )
-        else:
-            self.stdout.write(
-                self.style.ERROR(f"Не удалось рассчитать волатильность для {pair_name}")
+        try:
+            volatility = calculate_volatility(pair_name)
+            if volatility is not None:
+                self.stdout.write(
+                    self.style.SUCCESS(f"Волатильность для {pair_name}: {volatility}")
+                )
+            else:
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"Не удалось рассчитать волатильность для {pair_name}"
+                    )
+                )
+        except Exception as e:
+            self.stderr.write(
+                self.style.ERROR(f"Ошибка при расчёте волатильности: {e}")
             )

@@ -5,10 +5,10 @@ from core.models import CryptoPair, Strategy
 class CryptoPairSerializer(serializers.ModelSerializer):
     class Meta:
         model = CryptoPair
-        fields = "__all__"
+        fields = ["id", "name", "base_currency", "quote_currency"]
 
 
 class StrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
-        fields = "__all__"
+        fields = ["id", "user", "risk_level", "amount", "expected_return", "created_at"]

@@ -10,9 +10,10 @@ from tzlocal import get_localzone
 def update_historical_data():
     pairs = CryptoPair.objects.all()
     for pair in pairs:
-        fetch_historical_data(pair.name)
+        fetch_historical_data.delay(pair.name)
 
 
+@shared_task
 def fetch_historical_data(pair_name):
     url = f"https://api.bybit.com/v5/market/kline?category=spot&symbol={pair_name}&interval=1&limit=200"
     try:
@@ -48,13 +49,19 @@ def fetch_historical_data(pair_name):
 def fetch_crypto_pairs():
     url = "https://api.bybit.com/v5/market/symbols?category=spot"
     try:
-        response = httpx.get(url)
+        response = httpx.get(url, timeout=30)
         response.raise_for_status()
         data = response.json()
 
         if "result" in data and "list" in data["result"]:
             for pair in data["result"]["list"]:
-                CryptoPair.objects.update_or_create(name=pair["symbol"])
+                CryptoPair.objects.update_or_create(
+                    name=pair["symbol"],
+                    defaults={
+                        "base_currency": pair.get("baseCoin", ""),
+                        "quote_currency": pair.get("quoteCoin", ""),
+                    },
+                )
     except httpx.RequestError as e:
         print(f"Ошибка сети при запросе криптопар: {e}")
     except Exception as e:
