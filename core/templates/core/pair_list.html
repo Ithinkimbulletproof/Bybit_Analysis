@@ -1,0 +1,34 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Криптовалютные пары{% endblock %}
+
+{% block header %}Список криптовалютных пар{% endblock %}
+
+{% block content %}
+<ul id="pairs">
+    {% for pair in pairs %}
+        <li>
+            <span>{{ pair.name }}</span>
+            <button class="favorite-btn" data-id="{{ pair.id }}">
+                {% if pair.is_favorite %}⭐ Избранное{% else %}Добавить в избранное{% endif %}
+            </button>
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.favorite-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const pairId = button.getAttribute('data-id');
+            fetch(`/toggle-favorite/${pairId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(response => {
+                if (response.ok) location.reload();
+            });
+        });
+    });
+</script>
+{% endblock %}

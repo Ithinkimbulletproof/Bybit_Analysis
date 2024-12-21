@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+
+{% block title %}API доступ{% endblock %}
+
+{% block content %}
+    <h2>Добро пожаловать в API</h2>
+    <p>Здесь вы можете взаимодействовать с нашим API для получения информации о криптовалютных парах и стратегиях. Выберите один из доступных маршрутов ниже:</p>
+    <ul class="link-list">
+        <li><a href="/api/crypto-pairs/">Криптовалютные пары</a></li>
+        <li><a href="/api/strategies/">Стратегии</a></li>
+    </ul>
+{% endblock %}

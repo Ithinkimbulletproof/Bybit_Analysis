@@ -1,14 +1,18 @@
 import numpy as np
+import pandas as pd
 from pyti.relative_strength_index import relative_strength_index as rsi
 from pyti.simple_moving_average import simple_moving_average as sma
 from pyti.moving_average_convergence_divergence import (
     moving_average_convergence_divergence as macd,
 )
 from core.models import HistoricalData
+from core.backtrader_strategy import TestStrategy
+import backtrader as bt
 import logging
+import traceback
 
 logging.basicConfig(
-    filename="volatility.log",
+    filename="analytics.log",
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
@@ -42,6 +46,7 @@ def calculate_volatility(pair_name, period=None):
         return results
     except Exception as e:
         logging.error(f"Ошибка при расчёте волатильности для {pair_name}: {e}")
+        logging.error(traceback.format_exc())
         return None
 
 
@@ -70,6 +75,7 @@ def calculate_technical_indicators(pair_name):
         return indicators
     except Exception as e:
         logging.error(f"Ошибка при расчёте индикаторов для {pair_name}: {e}")
+        logging.error(traceback.format_exc())
         return None
 
 
@@ -95,4 +101,40 @@ def generate_strategy(amount, risk_level, indicators=None):
         return strategy
     except Exception as e:
         logging.error(f"Ошибка при генерации стратегии: {e}")
+        logging.error(traceback.format_exc())
         return None
+
+
+def run_backtrader(pair_name):
+    try:
+        data = HistoricalData.objects.filter(pair__name=pair_name).order_by("date")
+        if not data.exists():
+            print(f"Нет данных для {pair_name}")
+            return
+
+        prices = [float(d.close_price) for d in data]
+        dates = [d.date for d in data]
+
+        if len(prices) < 2:
+            print(f"Недостаточно данных для {pair_name}")
+            return
+
+        class CustomData(bt.feeds.PandasData):
+            params = dict(dataname=None)
+
+        cerebro = bt.Cerebro()
+        cerebro.addstrategy(TestStrategy)
+
+        df = pd.DataFrame({"datetime": dates, "close": prices})
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df.set_index("datetime", inplace=True)
+
+        data_feed = CustomData(dataname=df)
+        cerebro.adddata(data_feed)
+
+        cerebro.run()
+        cerebro.plot()
+    except Exception as e:
+        logging.error(f"Ошибка в Backtrader для {pair_name}: {e}")
+        logging.error(traceback.format_exc())
+        print(f"Ошибка при запуске Backtrader: {e}")
