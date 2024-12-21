@@ -1,15 +1,14 @@
+import os
 from celery import Celery
-from celery.schedules import crontab
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bybit_analysis.settings")
 
 app = Celery("bybit_analysis")
 
-app.conf.beat_schedule = {
-    "update-historical-data-every-hour": {
-        "task": "core.tasks.update_historical_data",
-        "schedule": crontab(minute=0, hour="*"),
-    },
-    "fetch-crypto-pairs-every-day": {
-        "task": "core.tasks.fetch_crypto_pairs",
-        "schedule": crontab(minute=0, hour=0),
-    },
-}
+app.conf.update(
+    worker_pool="solo",
+)
+
+app.config_from_object("django.conf:settings", namespace="CELERY")
+
+app.autodiscover_tasks()

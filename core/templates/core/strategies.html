@@ -5,14 +5,21 @@
 {% block header %}Список стратегий{% endblock %}
 
 {% block content %}
-<div class="strategies">
-    {% for strategy in strategies %}
-        <div class="strategy-card">
-            <h2>Стратегия #{{ forloop.counter }}</h2>
-            <p><strong>Уровень риска:</strong> {{ strategy.risk_level }}</p>
-            <p><strong>Сумма:</strong> {{ strategy.total_investment }}</p>
-            <p><strong>Выделено:</strong> {{ strategy.allocated_amount }}</p>
-        </div>
-    {% endfor %}
+<div class="container mt-4">
+    <h2 class="text-center text-white">Список стратегий</h2>
+    <div class="row">
+        {% for strategy in strategies %}
+            <div class="col-md-4 mb-4">
+                <div class="card strategy-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Стратегия #{{ forloop.counter }}</h5>
+                        <p class="card-text"><strong>Уровень риска:</strong> {{ strategy.risk_level }}</p>
+                        <p class="card-text"><strong>Сумма:</strong> {{ strategy.total_investment }}</p>
+                        <p class="card-text"><strong>Выделено:</strong> {{ strategy.allocated_amount }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

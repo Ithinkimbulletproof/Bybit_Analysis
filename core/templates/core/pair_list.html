@@ -5,16 +5,19 @@
 {% block header %}Список криптовалютных пар{% endblock %}
 
 {% block content %}
-<ul id="pairs">
-    {% for pair in pairs %}
-        <li>
-            <span>{{ pair.name }}</span>
-            <button class="favorite-btn" data-id="{{ pair.id }}">
-                {% if pair.is_favorite %}⭐ Избранное{% else %}Добавить в избранное{% endif %}
-            </button>
-        </li>
-    {% endfor %}
-</ul>
+<div class="container mt-4">
+    <h2 class="text-center text-white">Список криптовалютных пар</h2>
+    <ul id="pairs" class="list-group">
+        {% for pair in pairs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ pair.name }}</span>
+                <button class="btn {% if pair.is_favorite %}btn-warning{% else %}btn-outline-warning{% endif %} favorite-btn" data-id="{{ pair.id }}">
+                    {% if pair.is_favorite %}⭐ Избранное{% else %}Добавить в избранное{% endif %}
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
 {% endblock %}
 
 {% block extra_js %}
