@@ -7,14 +7,32 @@
 {% block content %}
 <div class="container mt-4">
     <h2 class="text-center text-white">Список криптовалютных пар</h2>
-    <ul id="pairs" class="list-group">
-        {% for pair in pairs %}
+
+    <h3 class="text-success">Вырастут</h3>
+    <ul id="pairs-grow" class="list-group mb-4">
+        {% for pair in pairs_grow %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>{{ pair.name }}</span>
                 <button class="btn {% if pair.is_favorite %}btn-warning{% else %}btn-outline-warning{% endif %} favorite-btn" data-id="{{ pair.id }}">
                     {% if pair.is_favorite %}⭐ Избранное{% else %}Добавить в избранное{% endif %}
                 </button>
             </li>
+        {% empty %}
+            <li class="list-group-item">Нет данных о росте</li>
+        {% endfor %}
+    </ul>
+
+    <h3 class="text-danger">Упадут</h3>
+    <ul id="pairs-fall" class="list-group">
+        {% for pair in pairs_fall %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ pair.name }}</span>
+                <button class="btn {% if pair.is_favorite %}btn-warning{% else %}btn-outline-warning{% endif %} favorite-btn" data-id="{{ pair.id }}">
+                    {% if pair.is_favorite %}⭐ Избранное{% else %}Добавить в избранное{% endif %}
+                </button>
+            </li>
+        {% empty %}
+            <li class="list-group-item">Нет данных о падении</li>
         {% endfor %}
     </ul>
 </div>
@@ -27,10 +45,24 @@
             const pairId = button.getAttribute('data-id');
             fetch(`/toggle-favorite/${pairId}/`, {
                 method: 'POST',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            }).then(response => {
-                if (response.ok) location.reload();
-            });
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.classList.toggle('btn-warning');
+                    button.classList.toggle('btn-outline-warning');
+                    button.innerHTML = button.classList.contains('btn-warning')
+                        ? '⭐ Избранное'
+                        : 'Добавить в избранное';
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
         });
     });
 </script>

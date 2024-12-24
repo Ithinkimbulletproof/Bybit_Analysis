@@ -8,10 +8,13 @@
         <p class="text-center text-white">Здесь вы можете взаимодействовать с нашим API для получения информации о криптовалютных парах и стратегиях. Выберите один из доступных маршрутов ниже:</p>
         <ul class="list-group">
             <li class="list-group-item">
-                <a href="/api/crypto-pairs/" class="btn btn-warning w-100">Криптовалютные пары</a>
+                <a href="{% url 'pair_list' %}" class="btn btn-warning w-100">Криптовалютные пары</a>
             </li>
             <li class="list-group-item">
-                <a href="/api/strategies/" class="btn btn-warning w-100">Стратегии</a>
+                <a href="{% url 'strategy_list' %}" class="btn btn-warning w-100">Стратегии</a>
+            </li>
+            <li class="list-group-item">
+                <a href="{% url 'generate_strategy' %}" class="btn btn-warning w-100">Генерация стратегии</a>
             </li>
         </ul>
     </div>

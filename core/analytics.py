@@ -1,21 +1,18 @@
+import sys
 import numpy as np
 import pandas as pd
 from pyti.relative_strength_index import relative_strength_index as rsi
 from pyti.simple_moving_average import simple_moving_average as sma
-from pyti.moving_average_convergence_divergence import (
-    moving_average_convergence_divergence as macd,
-)
-from core.models import HistoricalData
-from core.backtrader_strategy import TestStrategy
-import backtrader as bt
+from core.models import HistoricalData, CryptoPair
 import logging
 import traceback
 
 logging.basicConfig(
-    filename="analytics.log",
-    level=logging.ERROR,
+    stream=sys.stdout,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+logger = logging.getLogger(__name__)
 
 
 def calculate_volatility(pair_name, period=None):
@@ -24,29 +21,31 @@ def calculate_volatility(pair_name, period=None):
             "-date"
         )
 
+        data = pd.DataFrame(list(historical_data.values("date", "close_price")))
+
         if period:
-            historical_data = historical_data[:period]
+            data = data.head(period)
 
-        prices = [float(data.close_price) for data in historical_data]
-
-        if len(prices) < 2:
+        if len(data) < 2:
             return None
 
         results = {}
         periods = [period] if period else [30, 90, 180, 365]
+
         for p in periods:
-            if len(prices) >= p:
-                period_prices = prices[:p]
-                returns = np.diff(np.log(period_prices))
+            if len(data) >= p:
+                period_data = data.head(p)
+                returns = np.diff(np.log(period_data["close_price"].values))
                 volatility = np.std(returns)
                 results[f"volatility_{p}_days"] = round(volatility, 4)
             else:
                 results[f"volatility_{p}_days"] = None
 
+        logger.info(f"Волатильность для {pair_name} рассчитана: {results}")
         return results
     except Exception as e:
-        logging.error(f"Ошибка при расчёте волатильности для {pair_name}: {e}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Ошибка при расчёте волатильности для {pair_name}: {e}")
+        logger.error(traceback.format_exc())
         return None
 
 
@@ -56,85 +55,86 @@ def calculate_technical_indicators(pair_name):
             "-date"
         )
 
-        prices = [float(data.close_price) for data in historical_data[:200]]
+        data = pd.DataFrame(list(historical_data.values("date", "close_price")))
 
-        if len(prices) < 30:
+        if len(data) < 30:
             return None
 
+        prices = data["close_price"].values
+
+        sma_50 = sma(prices[-50:], 50)[-1] if len(data) >= 50 else None
+        sma_200 = sma(prices, 200)[-1] if len(data) >= 200 else None
+        rsi_14 = rsi(prices[-14:], 14)[-1] if len(data) >= 14 else None
+
+        prediction = None
+        if sma_50 and sma_200:
+            if sma_50 > sma_200 and rsi_14 < 70:
+                prediction = "up"
+            elif sma_50 < sma_200 and rsi_14 > 30:
+                prediction = "down"
+            else:
+                prediction = "neutral"
+
         indicators = {
-            "rsi_14": rsi(prices[-14:], 14)[-1] if len(prices) >= 14 else None,
-            "sma_50": sma(prices[-50:], 50)[-1] if len(prices) >= 50 else None,
-            "sma_200": sma(prices, 200)[-1] if len(prices) >= 200 else None,
-            "macd": macd(prices, 12, 26)[-1] if len(prices) >= 26 else None,
+            "sma_50": sma_50,
+            "sma_200": sma_200,
+            "rsi_14": rsi_14,
+            "prediction": prediction,
         }
-
-        for key in indicators:
-            if indicators[key] is not None:
-                indicators[key] = round(indicators[key], 4)
-
+        logger.info(f"Технические индикаторы для {pair_name}: {indicators}")
         return indicators
     except Exception as e:
-        logging.error(f"Ошибка при расчёте индикаторов для {pair_name}: {e}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Ошибка при расчёте индикаторов для {pair_name}: {e}")
+        logger.error(traceback.format_exc())
         return None
 
 
-def generate_strategy(amount, risk_level, indicators=None):
+def update_trend(pair_name, trend):
     try:
-        allocation = 0
-        risk_allocations = {"low": 0.2, "medium": 0.5, "high": 0.8}
-
-        if risk_level in risk_allocations:
-            allocation = amount * risk_allocations[risk_level]
-        else:
-            raise ValueError(f"Неверный уровень риска: {risk_level}")
-
-        strategy = {
-            "risk_level": risk_level,
-            "total_investment": round(amount, 2),
-            "allocated_amount": round(allocation, 2),
-        }
-
-        if indicators:
-            strategy["indicators"] = indicators
-
-        return strategy
-    except Exception as e:
-        logging.error(f"Ошибка при генерации стратегии: {e}")
-        logging.error(traceback.format_exc())
-        return None
+        pair = CryptoPair.objects.get(name=pair_name)
+        if pair.trend != trend:
+            pair.trend = trend
+            pair.save()
+            logger.info(f"Обновлен тренд для пары {pair_name}: {trend}")
+    except CryptoPair.DoesNotExist:
+        logger.error(f"Пара {pair_name} не найдена в базе")
 
 
-def run_backtrader(pair_name):
+def update_volatility(pair, volatility):
     try:
-        data = HistoricalData.objects.filter(pair__name=pair_name).order_by("date")
-        if not data.exists():
-            print(f"Нет данных для {pair_name}")
-            return
+        if volatility.get("volatility_30_days"):
+            pair.volatility_30_days = volatility["volatility_30_days"]
+        if volatility.get("volatility_90_days"):
+            pair.volatility_90_days = volatility["volatility_90_days"]
+        if volatility.get("volatility_180_days"):
+            pair.volatility_180_days = volatility["volatility_180_days"]
+        if volatility.get("volatility_365_days"):
+            pair.volatility_365_days = volatility["volatility_365_days"]
 
-        prices = [float(d.close_price) for d in data]
-        dates = [d.date for d in data]
-
-        if len(prices) < 2:
-            print(f"Недостаточно данных для {pair_name}")
-            return
-
-        class CustomData(bt.feeds.PandasData):
-            params = dict(dataname=None)
-
-        cerebro = bt.Cerebro()
-        cerebro.addstrategy(TestStrategy)
-
-        df = pd.DataFrame({"datetime": dates, "close": prices})
-        df["datetime"] = pd.to_datetime(df["datetime"])
-        df.set_index("datetime", inplace=True)
-
-        data_feed = CustomData(dataname=df)
-        cerebro.adddata(data_feed)
-
-        cerebro.run()
-        cerebro.plot()
+        pair.save()
+        logger.info(f"Волатильность для пары {pair.name} обновлена в базе.")
     except Exception as e:
-        logging.error(f"Ошибка в Backtrader для {pair_name}: {e}")
-        logging.error(traceback.format_exc())
-        print(f"Ошибка при запуске Backtrader: {e}")
+        logger.error(f"Ошибка при обновлении волатильности для пары {pair.name}: {e}")
+
+
+def analyze_and_update_trends():
+    try:
+        pairs = CryptoPair.objects.all()
+
+        for pair in pairs:
+            logger.info(f"Запуск анализа для пары {pair.name}")
+
+            indicators = calculate_technical_indicators(pair.name)
+            volatility = calculate_volatility(pair.name)
+
+            if indicators:
+                trend = indicators.get("prediction", "neutral")
+                update_trend(pair.name, trend)
+                logger.info(f"Тренд для пары {pair.name} обновлен: {trend}")
+
+            if volatility:
+                update_volatility(pair, volatility)
+                logger.info(f"Волатильность для пары {pair.name}: {volatility}")
+
+    except Exception as e:
+        logger.error(f"Ошибка при анализе и обновлении трендов: {e}")

@@ -5,22 +5,26 @@ from django.core.management.base import BaseCommand
 from core.models import CryptoPair
 from asgiref.sync import sync_to_async
 
+# Настройка логирования для вывода в консоль
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-logging.basicConfig(
-    filename="logfile.log", level=logging.INFO, format=LOG_FORMAT, filemode="a"
-)
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
 logger = logging.getLogger(__name__)
 
 
 @sync_to_async
 def update_or_create_pair(symbol, base_coin, quote_coin):
-    CryptoPair.objects.update_or_create(
-        name=symbol,
-        defaults={
-            "base_currency": base_coin,
-            "quote_currency": quote_coin,
-        },
-    )
+    try:
+        CryptoPair.objects.update_or_create(
+            name=symbol,
+            defaults={
+                "base_currency": base_coin,
+                "quote_currency": quote_coin,
+            },
+        )
+        logger.info(f"Обновлена или добавлена пара {symbol}")
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении пары {symbol}: {e}")
 
 
 class Command(BaseCommand):
@@ -29,12 +33,14 @@ class Command(BaseCommand):
     async def fetch_pairs(self, client):
         url = "https://api.bybit.com/v5/market/instruments-info?category=spot"
         try:
+            logger.info("Отправка запроса к API Bybit для получения списка пар")
             response = await client.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
 
             if "result" in data and "list" in data["result"] and data["result"]["list"]:
                 pairs = data["result"]["list"]
+                logger.info(f"Получено {len(pairs)} пар с API Bybit")
                 for pair in pairs:
                     try:
                         if (
@@ -48,29 +54,19 @@ class Command(BaseCommand):
                                 quote_coin=pair["quoteCoin"],
                             )
                         else:
-                            self.stderr.write(
-                                self.style.ERROR(
-                                    f"Пропуск пары из-за отсутствия ключей: {pair}"
-                                )
+                            logger.warning(
+                                f"Пропуск пары из-за отсутствия ключей: {pair}"
                             )
                     except Exception as e:
-                        self.stderr.write(
-                            self.style.ERROR(f"Ошибка при обновлении пары {pair}: {e}")
-                        )
+                        logger.error(f"Ошибка при обновлении пары {pair}: {e}")
 
             else:
-                self.stderr.write(
-                    self.style.ERROR(
-                        "Ответ API не содержит списка пар или список пуст."
-                    )
-                )
+                logger.error("Ответ API не содержит списка пар или список пуст.")
 
         except httpx.RequestError as e:
-            self.stderr.write(
-                self.style.ERROR(f"Ошибка сети при запросе списка пар: {e}")
-            )
+            logger.error(f"Ошибка сети при запросе списка пар: {e}")
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Ошибка при обработке списка пар: {e}"))
+            logger.error(f"Ошибка при обработке списка пар: {e}")
 
     async def handle_async(self):
         async with httpx.AsyncClient() as client:

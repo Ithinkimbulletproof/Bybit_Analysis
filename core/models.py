@@ -19,9 +19,20 @@ class UserProfile(models.Model):
 
 
 class CryptoPair(models.Model):
-    name = models.CharField(max_length=50, unique=True)
-    base_currency = models.CharField(max_length=20)
-    quote_currency = models.CharField(max_length=20)
+    name = models.CharField(max_length=255, unique=True)
+    base_currency = models.CharField(max_length=50)
+    quote_currency = models.CharField(max_length=50)
+    is_favorite = models.BooleanField(default=False)
+    trend = models.CharField(
+        max_length=10,
+        choices=[("up", "Вырастет"), ("down", "Упадет"), ("neutral", "Нейтрально")],
+        default="neutral",
+    )
+    trend_updated_at = models.DateTimeField(auto_now=True)
+    volatility_30_days = models.FloatField(null=True, blank=True)
+    volatility_90_days = models.FloatField(null=True, blank=True)
+    volatility_180_days = models.FloatField(null=True, blank=True)
+    volatility_365_days = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return self.name
